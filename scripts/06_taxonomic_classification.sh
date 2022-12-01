@@ -16,13 +16,24 @@ echo "########################################"
 
 if [[ ! -f $taxonomic_classification_qza ]]; then
     echo "--qiime2 taxonomic classification"
+    
+    echo "#!/bin/sh
+    
+    module load qiime/2-2021.4
+    
     qiime feature-classifier classify-sklearn \
         --i-classifier $refdb_classifier \
         --i-reads $seq_filt4_qza \
-        --o-classification $taxonomic_classification_qza
+        --o-classification $taxonomic_classification_qza" > $log_dir/classifier_sb.sh
+    
+    sbatch --cpus-per-task=12 --verbose \
+        --output=$log_dir/%j.out \
+        --mem=200g --gres=lscratch:450 --time 2-00:00:00 \
+        --error=$log_dir/%j.err \
+        $log_dir/classifier_sb.sh
 fi
 
-if [[ ! -f $taxonomic_classification_qzv ]]; then
+if [[ $taxonomic_classification_qza ]] && [[ ! -f $taxonomic_classification_qzv ]]; then
     echo "--qiime2 taxonomic classification visual"
     qiime metadata tabulate \
         --m-input-file $taxonomic_classification_qza \
@@ -30,7 +41,7 @@ if [[ ! -f $taxonomic_classification_qzv ]]; then
 fi
 
 # Interactive barplot visualization of taxonomies
-if [[ ! -f $taxonomic_bar_plots ]]; then
+if [[ $taxonomic_classification_qza ]] && [[ ! -f $taxonomic_bar_plots ]]; then
     echo "--qiime2 taxonomic classification barplots"
     qiime taxa barplot \
         --i-table $feat_filt4_qza \
@@ -40,7 +51,7 @@ if [[ ! -f $taxonomic_bar_plots ]]; then
 fi
 
 # output all seven levels of taxonomy
-if [[ ! -f $taxonmic_data_files/level-7.csv ]]; then
+if [[ $taxonomic_classification_qza ]] && [[ $taxonomic_classification_qza ]] && [[ ! -f $taxonmic_data_files/level-7.csv ]]; then
     echo "--qiime2 taxonomic classification export raw data"
     qiime tools export \
         --input-path $taxonomic_classification_qza \
@@ -48,7 +59,7 @@ if [[ ! -f $taxonmic_data_files/level-7.csv ]]; then
 fi
 
 # Remove taxa with non bacterial sequences and bacteria with unannotated phyla
-if [[ ! -f $taxonomic_classification_seq ]]; then
+if [[ $taxonomic_classification_qza ]] && [[ ! -f $taxonomic_classification_seq ]]; then
     echo "--qiime2 taxonomic classification cleanup seqs"
     qiime taxa filter-table \
             --i-table $feat_filt4_qza \
@@ -58,7 +69,7 @@ if [[ ! -f $taxonomic_classification_seq ]]; then
 fi
 
 # Remove taxa with non bacterial features and bacteria with unannotated phyla
-if [[ ! -f $taxonomic_classification_feat ]]; then
+if [[ $taxonomic_classification_qza ]] && [[ ! -f $taxonomic_classification_feat ]]; then
     echo "--qiime2 taxonomic classification cleanup feats"
     qiime taxa filter-table \
         --i-table $feat_filt4_qza \
